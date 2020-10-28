@@ -1,0 +1,7 @@
+subroutine MD_PROD
+
+call system('/loctmp/pee18323/GRO_bin/bin/grompp -f fullmd_sol.mdp -c start.gro -p start.top -o md.tpr')
+
+call system('mpirun -np 2 /loctmp/pee18323/GRO_bin/bin/mdrun -v -s md.tpr -nice 0 -o md_traj.trr -x md_traj.xtc -e md_ener.edr -c md_final.gro')
+
+end subroutine MD_PROD

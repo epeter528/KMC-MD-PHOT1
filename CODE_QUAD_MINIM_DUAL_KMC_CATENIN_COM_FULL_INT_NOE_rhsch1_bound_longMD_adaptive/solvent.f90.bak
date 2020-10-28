@@ -1,0 +1,1515 @@
+!program solvent
+subroutine solvent
+
+implicit none
+
+integer         :: m,k,i,p,l,n,ierr,j
+
+integer         :: changenumber,nsol
+
+integer         :: natoms,resnum,atomnum
+
+real(kind=8) ,dimension(500000) :: coord_test_x,coord_test_y,coord_test_z
+
+real(kind=8)                    :: vel_x,vel_y,vel_z
+
+real(kind=8)                    :: coord_x,coord_y,coord_z,fact
+
+character(len=5)                :: restype,atomtype
+
+integer,     dimension(500000)  :: resnumsol,atomnumsol
+
+real(kind=8) , dimension(500000) :: coord_xsol,coord_ysol,coord_zsol
+
+character(len=5),dimension(500000) :: restypesol,atomtypesol
+
+real(kind=8)                       :: diff_x,diff_y,diff_z,diff_tot,diff_x1,diff_x2
+
+real(kind=8)                       :: diff_y1,diff_y2,diff_z1,diff_z2,ranger
+
+real(kind=8)                       :: box_x,box_y,box_z,ff21,ff22,ff23,ff24
+
+logical                            :: changebool,changebool2
+
+logical                            :: changeboolean3
+
+real(kind=8)                       :: harvest3,box_x1,box_y1,box_z1
+
+character(len = 8)  :: date
+
+character(len =10)  :: time
+
+character(len = 5)  :: zone
+
+integer             :: tot
+
+integer,dimension(8) :: values 
+
+integer,allocatable  :: iseed(:)
+
+integer              :: isize , idate(8),nprotein
+
+real(kind=8),dimension(:),allocatable      :: coord_x22,coord_y22,coord_z22
+
+integer     ,dimension(:),allocatable      :: resnum22,atomnum22
+
+character(len=5),dimension(:),allocatable  :: restype22,atomtype22
+
+logical                                    :: exitboolean
+
+ call date_and_time(values=idate)
+
+ call random_seed(size=isize)
+ allocate( iseed(isize))
+ call random_seed(get=iseed)
+ iseed = iseed* (idate(8)-500)
+ call random_seed(put=iseed)
+ deallocate( iseed )
+
+
+open(unit=1,file='ff21')
+
+read(1,*,end=111,err=111)
+read(1,*,end=111,err=111) ff21
+read(1,*)               
+read(1,*)                 fact
+read(1,*,end=111,err=111) 
+read(1,*,end=111,err=111) ff22
+read(1,*,end=111,err=111)
+read(1,*,end=111,err=111) ff23
+read(1,*,end=111,err=111)
+read(1,*,end=111,err=111) ff24
+read(1,*)
+read(1,*,end=111,err=111) ranger
+
+close(unit=1)
+
+111 continue
+
+write(*,*) ranger
+
+open(unit=888,file='s11')
+
+
+i = 1
+
+do 
+
+           read(888,'(i5,2a5,i5,3f8.3)',end=9716,err=9716) resnumsol(i), restypesol(i), atomtypesol(i), atomnumsol(i), coord_xsol(i), &
+                                             coord_ysol(i), coord_zsol(i)
+
+        !   write(*,'(i5,2a5,i5,3f8.3)') resnumsol(i), restypesol(i), atomtypesol(i), atomnumsol(i), coord_xsol(i), &
+        !                                     coord_ysol(i), coord_zsol(i) 
+           if(restypesol(i) == 'SOL  ') then
+
+              i =  i + 1
+
+           endif
+enddo
+
+
+9716 continue
+
+close(unit=888)
+
+nsol = i - 1
+
+open(unit=1111,file='prot.gro')
+
+
+read(1111,*)
+read(1111,*) natoms
+
+do m=1,NATOMS
+
+           read(1111,'(i5,2a5,i5,3f8.3)',end=91111,err=91111) resnum, restype, atomtype, atomnum, coord_test_x(m), &
+                                             coord_test_y(m), coord_test_z(m)
+enddo
+
+read(1111,*) box_x,box_y,box_z
+
+91111     continue
+
+close(unit=1111)
+
+tot = natoms + nsol
+
+write(*,*) nsol
+write(*,*) tot
+
+allocate(coord_x22(tot),stat=ierr)
+allocate(coord_y22(tot),stat=ierr)
+allocate(coord_z22(tot),stat=ierr)
+allocate(resnum22(tot),stat=ierr)
+allocate(atomnum22(tot),stat=ierr)
+allocate(restype22(tot),stat=ierr)
+allocate(atomtype22(tot),stat=ierr)
+
+!call system('/loctmp/pee18323/GRO_seq/bin/editconf -f prot.gro -c -o prot.gro')
+
+call system('/scratch/pee18323/GRO_bin/bin/editconf -f prot.gro -c -o prot.gro -bt cubic ')
+
+call system('rm -f #*# out') 
+
+open(unit=1111,file='prot.gro')
+
+
+call system ('rm -f traj.trr mdout.mdp ener.edr md.log input.tpr \#minimized.gro.1#')
+
+call system('rm -f first.gro')
+
+box_x1 = box_x
+box_y1 = box_y
+box_z1 = box_z
+
+
+box_x = box_x + ranger
+box_y = box_y + ranger
+box_z = box_z + ranger
+!         call system('editconf -f minimized3.gro -o minimized_boxer.gro -d 0.75 -bt cubic')
+!         call system('cp -f LOV2.top LOV2gen.top')
+!         call system('genbox -cp minimized_boxer.gro -cs spc216.gro -o md_cheater2.gro -p LOV2gen.top')
+
+         open(unit=1112,file='first.gro')
+
+         read(1111,*)
+         read(1111,*)  
+
+         write(1112,*)
+         write(1112,*) tot
+
+         do i=1,natoms
+       
+           read(1111,'(i5,2a5,i5,3f8.3)',end=92015,err=92015) resnum, restype, atomtype, atomnum, coord_x, &
+                                             coord_y, coord_z
+          write(1112,'(i5,2a5,i5,3f8.3)') resnum, restype, atomtype, atomnum, coord_x, &
+                                             coord_y, coord_z
+
+                                             changebool = .false.
+
+                                             do n=1,nsol
+
+                                                if(atomtypesol(n) == '   OW') then
+
+                                                diff_x = coord_x - coord_xsol(n)
+                                                diff_y = coord_y - coord_ysol(n)
+                                                diff_z = coord_z - coord_zsol(n)
+
+                                                diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                if(diff_tot .le. ff22) then
+
+!                                                         write(*,*) diff_tot,'diff_tot'
+
+                                                         changebool = .true.
+
+                                                         changebool2 = .true.
+
+                                                         changeboolean3 = .false.
+
+                                                         diff_x1 = 0.017
+                                                         diff_y1 = -0.09
+                                                         diff_z1 = 0.039
+
+                                                         diff_x2 = -0.078
+                                                         diff_y2 = 0.043
+                                                         diff_z2 = 0.047
+
+                                                         changenumber = n
+
+                                                         exit
+
+                                                
+
+                                                endif
+
+                                                
+
+                                                diff_x = coord_x - coord_xsol(n) - box_x
+                                                diff_y = coord_y - coord_ysol(n)
+                                                diff_z = coord_z - coord_zsol(n)
+
+                                                diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                if(diff_tot .le. ff22) then
+
+ !                                                        write(*,*) diff_tot,'diff_tot'
+
+                                                         changebool = .true.
+
+                                                         changebool2 = .true.
+
+                                                         changeboolean3 = .false.
+
+                                                         diff_x1 = 0.017
+                                                         diff_y1 = -0.09
+                                                         diff_z1 = 0.039
+
+                                                         diff_x2 = -0.078
+                                                         diff_y2 = 0.043
+                                                         diff_z2 = 0.047
+
+                                                         changenumber = n
+
+                                                         exit
+
+                                                
+                                                endif
+
+                                                
+                                                diff_x = coord_x - coord_xsol(n) + box_x
+                                                diff_y = coord_y - coord_ysol(n)
+                                                diff_z = coord_z - coord_zsol(n)
+
+                                                diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                if(diff_tot .le. ff22) then
+
+!                                                         write(*,*) diff_tot,'diff_tot'
+
+                                                         changebool = .true.
+
+                                                         changebool2 = .true.
+
+                                                         changeboolean3 = .false.
+
+                                                         diff_x1 = 0.017
+                                                         diff_y1 = -0.09
+                                                         diff_z1 = 0.039
+
+                                                         diff_x2 = -0.078
+                                                         diff_y2 = 0.043
+                                                         diff_z2 = 0.047
+
+                                                         changenumber = n
+
+                                                         exit
+
+                                                endif
+
+                                                
+                                                diff_x = coord_x - coord_xsol(n) 
+                                                diff_y = coord_y - coord_ysol(n) - box_y
+                                                diff_z = coord_z - coord_zsol(n)
+
+                                                diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                if(diff_tot .le. ff22) then
+
+ !                                                        write(*,*) diff_tot,'diff_tot'
+
+                                                         changebool = .true.
+
+                                                         changebool2 = .true.
+
+                                                         changeboolean3 = .false.
+
+                                                         diff_x1 = 0.017
+                                                         diff_y1 = -0.09
+                                                         diff_z1 = 0.039
+
+                                                         diff_x2 = -0.078
+                                                         diff_y2 = 0.043
+                                                         diff_z2 = 0.047
+
+                                                         changenumber = n
+
+                                                         exit
+
+                                                
+                                                endif
+
+                                                
+                                                diff_x = coord_x - coord_xsol(n) 
+                                                diff_y = coord_y - coord_ysol(n) + box_y
+                                                diff_z = coord_z - coord_zsol(n)
+
+                                                diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                if(diff_tot .le. ff22) then
+
+ !                                                        write(*,*) diff_tot,'diff_tot'
+
+                                                         changebool = .true.
+
+                                                         changebool2 = .true.
+
+                                                         changeboolean3 = .false.
+
+                                                         diff_x1 = 0.017
+                                                         diff_y1 = -0.09
+                                                         diff_z1 = 0.039
+
+                                                         diff_x2 = -0.078
+                                                         diff_y2 = 0.043
+                                                         diff_z2 = 0.047
+
+                                                         changenumber = n
+
+                                                         exit
+
+                                                
+                                                endif
+
+                                                
+                                                diff_x = coord_x - coord_xsol(n) 
+                                                diff_y = coord_y - coord_ysol(n) 
+                                                diff_z = coord_z - coord_zsol(n) -box_z
+
+                                                diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                if(diff_tot .le. ff22) then
+
+    !                                                     write(*,*) diff_tot,'diff_tot'
+
+                                                         changebool = .true.
+
+                                                         changebool2 = .true.
+
+                                                         changeboolean3 = .false.
+
+                                                         diff_x1 = 0.017
+                                                         diff_y1 = -0.09
+                                                         diff_z1 = 0.039
+
+                                                         diff_x2 = -0.078
+                                                         diff_y2 = 0.043
+                                                         diff_z2 = 0.047
+
+                                                         changenumber = n
+
+                                                         exit
+
+                                                
+                                                endif
+
+                                                diff_x = coord_x - coord_xsol(n) 
+                                                diff_y = coord_y - coord_ysol(n) 
+                                                diff_z = coord_z - coord_zsol(n) + box_z
+
+                                                diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                if(diff_tot .le. ff22) then
+
+   !                                                      write(*,*) diff_tot,'diff_tot'
+
+                                                         changebool = .true.
+
+                                                         changebool2 = .true.
+
+                                                         changeboolean3 = .false.
+
+                                                         diff_x1 = 0.017
+                                                         diff_y1 = -0.09
+                                                         diff_z1 = 0.039
+
+                                                         diff_x2 = -0.078
+                                                         diff_y2 = 0.043
+                                                         diff_z2 = 0.047
+
+                                                         changenumber = n
+
+                                                         exit
+
+                                                
+                                                endif
+
+                                             endif
+
+                                             enddo
+
+
+                                             if(changebool == .true.) then
+                                                
+
+
+                                                do
+
+                                                         !       10601  continue
+
+                                                                call random_number(harvest3)
+
+                                                                coord_xsol(changenumber) = harvest3*box_x1                  
+                                                                                            
+                                                               ! if(harvest3*box_x .gt. maxprotx .or. harvest3*box_x .lt. minprotx) then
+
+                                                               !         continue
+
+                                                         !               write(*,*) coord_xsol(changenumber)
+
+                                                               ! else
+
+                                                               !         goto 10601
+
+                                                               ! endif
+
+                                                do   l = 1,10 
+
+
+                                                             !   10602  continue
+
+                                                                call random_number(harvest3)
+
+                                                                coord_ysol(changenumber) = harvest3*box_y1                  
+                                                                                            
+                                                              !  if(harvest3*box_y .gt. maxproty .or. harvest3*box_y .lt. minproty) then
+
+                                                              !         continue
+
+                                                              !  else
+
+                                                              !         goto 10602
+
+                                                              ! endif  
+
+                                                     do p = 1,10
+ 
+                                                                changebool2 = .true.
+                                                             !   10603  continue
+
+                                                                call random_number(harvest3)
+
+                                                                coord_zsol(changenumber) = harvest3*box_z1                   
+                                                                                            
+                                                             !   if(harvest3*box_z .gt. maxprotz .or. harvest3*box_z .lt. minprotz) then
+
+                                                             !           continue
+
+                                                             !   else
+
+                                                             !           goto 10603
+
+                                                                if(harvest3 .le. 0.33) then
+
+                                                                   coord_xsol(changenumber) = harvest3*ranger + box_x1
+
+                                                                endif
+
+                                                                if(harvest3 .gt. 0.33 .and. harvest3 .le. 0.66) then
+
+                                                                   coord_ysol(changenumber) = harvest3*ranger + box_y1
+
+                                                                endif
+
+                                                                if(harvest3 .gt. 0.66) then
+
+                                                                    coord_zsol(changenumber) = harvest3*ranger + box_z1
+
+                                                                endif
+
+
+                                                                coord_xsol(changenumber+1) = coord_xsol(changenumber) - 0.017
+                                                                coord_ysol(changenumber+1) = coord_ysol(changenumber) + 0.09
+                                                                coord_zsol(changenumber+1) = coord_zsol(changenumber) -0.039
+
+                                                                coord_xsol(changenumber+2) = coord_xsol(changenumber) + 0.078
+                                                                coord_ysol(changenumber+2) = coord_ysol(changenumber) - 0.043
+                                                                coord_zsol(changenumber+2) = coord_zsol(changenumber) - 0.047
+
+  !                                                              if(coord_xsol(changenumber).gt.maxprotx .and. &
+  !                                                                 coord_ysol(changenumber).gt.maxproty .and. &
+  !                                                                 coord_zsol(changenumber).gt.maxprotz) then
+
+  !                                                              else if(coord_xsol(changenumber).lt.minprotx .and. &
+  !                                                                 coord_ysol(changenumber).lt.minproty      .and. &
+  !                                                                 coord_zsol(changenumber).lt.minprotz ) then
+
+                                      !                  write(*,*) 'solvent test'
+
+
+                                                                          do m=1,NATOMS
+
+                             
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+
+                                                                             diff_x = coord_test_x(m)-box_x - coord_xsol(changenumber)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m)+box_x - coord_xsol(changenumber)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber)
+
+                                                                             diff_y = coord_test_y(m)-box_y - coord_ysol(changenumber)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber)
+
+                                                                             diff_y = coord_test_y(m)+box_y - coord_ysol(changenumber)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber)
+
+                                                                             diff_z = coord_test_z(m)-box_z - coord_zsol(changenumber)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber)
+
+                                                                             diff_z = coord_test_z(m)+box_z - coord_zsol(changenumber)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+1)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+1)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+1)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+
+                                                                             diff_x = coord_test_x(m)-box_x - coord_xsol(changenumber+1)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+1)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+1)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m)+box_x - coord_xsol(changenumber+1)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+1)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+1)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+1)
+
+                                                                             diff_y = coord_test_y(m)-box_y - coord_ysol(changenumber+1)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+1)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+1)
+
+                                                                             diff_y = coord_test_y(m)+box_y - coord_ysol(changenumber+1)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+1)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+1)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+1)
+
+                                                                             diff_z = coord_test_z(m)-box_z - coord_zsol(changenumber+1)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+1)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+1)
+
+                                                                             diff_z = coord_test_z(m)+box_z - coord_zsol(changenumber+1)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+2)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+2)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+2)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+
+                                                                             diff_x = coord_test_x(m)-box_x - coord_xsol(changenumber+2)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+2)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+2)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m)+box_x - coord_xsol(changenumber+2)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+2)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+2)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+2)
+
+                                                                             diff_y = coord_test_y(m)-box_y - coord_ysol(changenumber+2)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+2)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+2)
+
+                                                                             diff_y = coord_test_y(m)+box_y - coord_ysol(changenumber+2)
+
+                                                                             diff_z = coord_test_z(m) - coord_zsol(changenumber+2)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+2)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+2)
+
+                                                                             diff_z = coord_test_z(m)-box_z - coord_zsol(changenumber+2)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                             diff_x = coord_test_x(m) - coord_xsol(changenumber+2)
+
+                                                                             diff_y = coord_test_y(m) - coord_ysol(changenumber+2)
+
+                                                                             diff_z = coord_test_z(m)+box_z - coord_zsol(changenumber+2)
+
+                                                                             diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                                                                             if(diff_tot .lt. ff23) then
+
+                                                                                changebool2 = .false.
+
+
+                                                                                exit
+
+                                                                             endif
+                                                                           enddo
+                                                               do k=1,nsol
+
+                                                                  if(k.ne.changenumber.and.k.ne.changenumber+1.and.k.ne.changenumber+2) then
+
+                                                                       diff_x = coord_xsol(changenumber) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+                                                                       diff_x = coord_xsol(changenumber) - coord_xsol(k)-box_x
+                                                                       diff_y = coord_ysol(changenumber) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+                                                                       diff_x = coord_xsol(changenumber) - coord_xsol(k)+box_x
+                                                                       diff_y = coord_ysol(changenumber) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+                                                                       diff_x = coord_xsol(changenumber) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber) - coord_ysol(k)-box_y
+                                                                       diff_z = coord_zsol(changenumber) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+
+                                                                       diff_x = coord_xsol(changenumber) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber) - coord_ysol(k)+box_y
+                                                                       diff_z = coord_zsol(changenumber) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+
+                                                                       diff_x = coord_xsol(changenumber) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber) - coord_zsol(k)-box_z
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+
+                                                                       diff_x = coord_xsol(changenumber) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber) - coord_zsol(k)+box_z
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+
+                                                                       diff_x = coord_xsol(changenumber+1) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+1) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+1) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif    
+                                                                         
+                                                                       diff_x = coord_xsol(changenumber+1) - coord_xsol(k)+box_x
+                                                                       diff_y = coord_ysol(changenumber+1) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+1) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif 
+
+                                                                        diff_x = coord_xsol(changenumber+1) - coord_xsol(k)-box_x
+                                                                       diff_y = coord_ysol(changenumber+1) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+1) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif 
+
+                                                                         diff_x = coord_xsol(changenumber+1) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+1) - coord_ysol(k)-box_y
+                                                                       diff_z = coord_zsol(changenumber+1) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+
+                                                                         diff_x = coord_xsol(changenumber+1) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+1) - coord_ysol(k)+box_y
+                                                                       diff_z = coord_zsol(changenumber+1) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+
+                                                                         diff_x = coord_xsol(changenumber+1) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+1) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+1) - coord_zsol(k)-box_z
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+
+                                                                         diff_x = coord_xsol(changenumber+1) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+1) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+1) - coord_zsol(k)+box_z
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif
+
+                                                                       diff_x = coord_xsol(changenumber+2) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+2) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+2) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif                                                                             
+
+                                                                 
+                                                                        diff_x = coord_xsol(changenumber+2) - coord_xsol(k)-box_x
+                                                                       diff_y = coord_ysol(changenumber+2) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+2) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif                                                                             
+ 
+                                                                        diff_x = coord_xsol(changenumber+2) - coord_xsol(k)+box_x
+                                                                       diff_y = coord_ysol(changenumber+2) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+2) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif                                                                             
+
+                                                                    
+                                                                        diff_x = coord_xsol(changenumber+2) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+2) - coord_ysol(k)-box_y
+                                                                       diff_z = coord_zsol(changenumber+2) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif                                                                             
+
+                                                                       
+                                                                        diff_x = coord_xsol(changenumber+2) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+2) - coord_ysol(k)+box_y
+                                                                       diff_z = coord_zsol(changenumber+2) - coord_zsol(k)
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif                                                                             
+
+                                                                      
+                                                                        diff_x = coord_xsol(changenumber+2) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+2) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+2) - coord_zsol(k)-box_z
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif                                                                             
+
+                                                                      
+
+                                                                        diff_x = coord_xsol(changenumber+2) - coord_xsol(k)
+                                                                       diff_y = coord_ysol(changenumber+2) - coord_ysol(k)
+                                                                       diff_z = coord_zsol(changenumber+2) - coord_zsol(k)+box_z
+
+                                                                       diff_tot = sqrt(diff_x**2+diff_y**2+diff_z**2)
+
+                               
+
+                                                                          if(diff_tot .lt. ff21) then
+
+                                                                          changebool2 = .false.     
+                                                                          exit
+ 
+                                                                   
+                                                                          endif                                                                             
+
+                                                                      endif
+                                                                 
+                                                                      enddo
+
+                                                                             if(changebool2 == .true.) then
+
+                                                                   !       write(*,'(i5,2a5,i5,3f8.3,3f8.4)') resnumsol(changenumber), restypesol(changenumber), atomtypesol(changenumber), atomnumsol(changenumber), coord_xsol(changenumber), &
+                                                                   !           coord_ysol(changenumber), coord_zsol(changenumber)
+                                                                   !       write(*,'(i5,2a5,i5,3f8.3,3f8.4)') resnumsol(changenumber+1), restypesol(changenumber+1), atomtypesol(changenumber+1), atomnumsol(changenumber+1), coord_xsol(changenumber+1), &
+                                                                   !           coord_ysol(changenumber+1), coord_zsol(changenumber+1)
+                                                                   !       write(*,'(i5,2a5,i5,3f8.3,3f8.4)') resnumsol(changenumber+2), restypesol(changenumber+2), atomtypesol(changenumber+2), atomnumsol(changenumber), coord_xsol(changenumber+2), &
+                                                                   !           coord_ysol(changenumber+2), coord_zsol(changenumber+2)
+                                                                              write(*,*) 'exit success'
+
+                                                                              changeboolean3 = .true.
+
+                                                                                exit
+
+                                                                              endif
+
+!                                                                          endif
+
+                                                                       enddo
+
+                                                                           if(changeboolean3 == .true.) then
+
+                              !                                              write(*,*) 'exit2'
+
+                                                                            exit
+
+                                                                           endif
+
+                                                             enddo
+
+                                                         if(changeboolean3 == .true.) then
+
+                               !                              write(*,*) 'exit 3'
+
+                                                             exit
+
+                                                          endif
+
+                                           
+                                       enddo
+                             
+                     endif
+
+
+        enddo
+
+          
+        do i=1,nsol
+
+           write(1112,'(i5,2a5,i5,3f8.3)') resnumsol(i), restypesol(i), atomtypesol(i), atomnumsol(i), coord_xsol(i), &
+                                             coord_ysol(i), coord_zsol(i)
+          
+        enddo             
+
+
+        write(1112,*) box_x , box_y , box_z
+
+
+92015    continue
+
+close(unit=1111)
+close(unit=1112)
+
+write(*,*) 'here solvent'
+
+
+do
+
+     open(unit=1,file='first.gro')
+
+     open(unit=2,file='sec.gro')
+
+     read(1,*)
+     read(1,*)   
+
+     write(2,*)
+
+     write(2,*)  tot
+
+     do j=1,natoms
+
+                 read(1,'(i5,2a5,i5,3f8.3)',end=1119,err=1119) resnum22(j), restype22(j), atomtype22(j), atomnum22(j), coord_x22(j), &
+                                             coord_y22(j), coord_z22(j)
+
+
+                  write(2,'(i5,2a5,i5,3f8.3)') resnum22(j), restype22(j), atomtype22(j), atomnum22(j), coord_x22(j), &
+                                             coord_y22(j), coord_z22(j)
+
+
+     enddo
+
+     do j=natoms+1,tot
+
+                 read(1,'(i5,2a5,i5,3f8.3)',end=1119,err=1119) resnum22(j), restype22(j), atomtype22(j), atomnum22(j), coord_x22(j), &
+                                             coord_y22(j), coord_z22(j)
+
+     enddo
+
+
+1119 continue
+
+
+
+     do j=natoms+1,tot
+ 
+                    if(atomtype22(j)=='   OW') then
+
+                       do k=1,natoms
+
+                                       diff_x = coord_x22(j) - coord_x22(k)
+                                       diff_y = coord_y22(j) - coord_y22(k) 
+                                       diff_z = coord_z22(j) - coord_z22(k)
+
+                                
+
+                                       diff_tot = sqrt(diff_x**2+ diff_y**2+ diff_z**2)
+
+                                                  if(diff_tot .le. ff24) then
+
+                             !          write(*,*) diff_tot, 'diff_tot davor'
+
+                                                   coord_x22(j) = coord_x22(j) + (coord_x22(j) - coord_x22(k))*fact/diff_tot
+                                                   coord_y22(j) = coord_y22(j) + (coord_y22(j) - coord_y22(k))*fact/diff_tot
+                                                   coord_z22(j) = coord_z22(j) + (coord_z22(j) - coord_z22(k))*fact/diff_tot
+                                                   coord_x22(j+1) = coord_x22(j+1) + (coord_x22(j) - coord_x22(k))*fact/diff_tot
+                                                   coord_y22(j+1) = coord_y22(j+1) + (coord_y22(j) - coord_y22(k))*fact/diff_tot
+                                                   coord_z22(j+1) = coord_z22(j+1) + (coord_z22(j) - coord_z22(k))*fact/diff_tot
+                                                   coord_x22(j+2) = coord_x22(j+2) + (coord_x22(j) - coord_x22(k))*fact/diff_tot
+                                                   coord_y22(j+2) = coord_y22(j+2) + (coord_y22(j) - coord_y22(k))*fact/diff_tot
+                                                   coord_z22(j+2) = coord_z22(j+2) + (coord_z22(j) - coord_z22(k))*fact/diff_tot
+
+                                                
+
+                                       diff_x = coord_x22(j) - coord_x22(k)
+                                       diff_y = coord_y22(j) - coord_y22(k) 
+                                       diff_z = coord_z22(j) - coord_z22(k)
+
+                                
+
+                                       diff_tot = sqrt(diff_x**2+ diff_y**2+ diff_z**2)
+
+                              !         write(*,*) diff_tot, 'diff_tot danach'
+
+                                                   exit
+
+                                                   endif
+
+                       enddo      
+
+
+                       do k=natoms+1,tot
+
+                                   if( resnum22(k) .ne. resnum22(j) .and. atomtype22(k)=='   OW') then
+
+                                       diff_x = coord_x22(j) - coord_x22(k)
+                                       diff_y = coord_y22(j) - coord_y22(k) 
+                                       diff_z = coord_z22(j) - coord_z22(k)
+
+                                
+
+                                       diff_tot = sqrt(diff_x**2+ diff_y**2+ diff_z**2)
+
+                                                  if(diff_tot .le. ff21) then
+
+                              !         write(*,*) diff_tot, 'diff_tot davor'
+
+                                                   coord_x22(j) = coord_x22(j) + (coord_x22(j) - coord_x22(k))*fact/diff_tot
+                                                   coord_y22(j) = coord_y22(j) + (coord_y22(j) - coord_y22(k))*fact/diff_tot
+                                                   coord_z22(j) = coord_z22(j) + (coord_z22(j) - coord_z22(k))*fact/diff_tot
+                                                   coord_x22(j+1) = coord_x22(j+1) + (coord_x22(j) - coord_x22(k))*fact/diff_tot
+                                                   coord_y22(j+1) = coord_y22(j+1) + (coord_y22(j) - coord_y22(k))*fact/diff_tot
+                                                   coord_z22(j+1) = coord_z22(j+1) + (coord_z22(j) - coord_z22(k))*fact/diff_tot
+                                                   coord_x22(j+2) = coord_x22(j+2) + (coord_x22(j) - coord_x22(k))*fact/diff_tot
+                                                   coord_y22(j+2) = coord_y22(j+2) + (coord_y22(j) - coord_y22(k))*fact/diff_tot
+                                                   coord_z22(j+2) = coord_z22(j+2) + (coord_z22(j) - coord_z22(k))*fact/diff_tot
+
+                                                
+
+                                       diff_x = coord_x22(j) - coord_x22(k)
+                                       diff_y = coord_y22(j) - coord_y22(k) 
+                                       diff_z = coord_z22(j) - coord_z22(k)
+
+                                
+
+                                       diff_tot = sqrt(diff_x**2+ diff_y**2+ diff_z**2)
+
+                              !         write(*,*) diff_tot, 'diff_tot danach'
+
+                                                   exit
+
+                                                   endif
+
+                                    endif
+
+                       enddo
+
+                    endif 
+
+                    write(2,'(i5,2a5,i5,3f8.3)') resnum22(j),restype22(j),atomtype22(j),atomnum22(j),coord_x22(j) &
+                                           & , coord_y22(j),coord_z22(j)                                 
+
+      enddo
+
+
+      write(2,'(1x,f8.5,2x,f8.5,2x,f8.5)') box_x,box_y,box_z 
+
+     close(unit=1)
+     close(unit=2)
+
+
+     call system('cp -f sec.gro first.gro')
+
+
+                exitboolean = .true.
+
+                do j=natoms+1,tot
+
+                     
+
+                       do k=natoms,tot
+
+                          if(atomtype22(j)=='   OW') then
+
+                                   if( resnum22(k) .ne. resnum22(j) .and.atomtype22(k)=='   OW' ) then
+
+                                       diff_x = coord_x22(j) - coord_x22(k)
+                                       diff_y = coord_y22(j) - coord_y22(k) 
+                                       diff_z = coord_z22(j) - coord_z22(k)
+
+                                
+
+                                       diff_tot = sqrt(diff_x**2+ diff_y**2+ diff_z**2)
+
+                                                  if(diff_tot .le. ff21) then
+
+                                                     exitboolean = .false.
+
+                                                     write(*,*) 'false A'
+
+                                                     goto 1188
+
+                                                   endif
+
+                                     endif
+
+
+                           endif
+                                                   
+                       enddo
+
+                       do k=1,natoms
+
+
+                                   if( resnum22(k) .ne. resnum22(j) .and. atomtype22(j) == '   OW') then
+
+                                       diff_x = coord_x22(j) - coord_x22(k)
+                                       diff_y = coord_y22(j) - coord_y22(k) 
+                                       diff_z = coord_z22(j) - coord_z22(k)
+
+                                
+
+                                       diff_tot = sqrt(diff_x**2+ diff_y**2+ diff_z**2)
+
+                                                  if(diff_tot .le. ff24) then
+
+                                                     exitboolean = .false.
+
+                                                     write(*,*) 'false B'
+
+                                                     goto 1188
+
+                                                   endif
+
+                                     endif
+                                                   
+                       enddo
+
+               enddo
+
+1188 continue
+
+
+if(exitboolean == .true. ) then
+
+           exit
+
+endif
+
+
+enddo
+
+deallocate(coord_x22,stat=ierr)
+deallocate(coord_y22,stat=ierr)
+deallocate(coord_z22,stat=ierr)
+deallocate(resnum22,stat=ierr)
+deallocate(atomnum22,stat=ierr)
+deallocate(restype22,stat=ierr)
+deallocate(atomtype22,stat=ierr)
+
+call system('/loctmp/pee18323/GRO_bin/bin/grompp -f fullmd_solequil.mdp -c first.gro -p LOV2gen.top -o equil.tpr')
+call system('mpirun -np 2 /loctmp/pee18323/GRO_bin/bin/mdrun -v -s equil.tpr -c first.gro')
+
+end subroutine solvent
+!end program solvent

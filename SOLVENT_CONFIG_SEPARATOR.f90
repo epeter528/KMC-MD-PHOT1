@@ -1,0 +1,110 @@
+subroutine SOLVENT_CONFIG_SEPARATOR
+
+implicit none
+
+integer          :: i,ntotal,k,modulonumber
+
+integer          :: resnum,atomnum,ierr
+
+real(kind=8)     :: coord_x,coord_y,coord_z
+
+real(kind=8)     :: vel_x,vel_y,vel_z,box_x,box_y,box_z
+
+integer          :: Natoms
+
+character(len=5) :: restype,atomtype
+
+integer,dimension(:),allocatable :: resnuma
+
+character(len=5),dimension(:),allocatable :: restypea
+
+k = 1
+
+open(unit=86,file='md_final.gro')
+read(86,*)
+read(86,*) ntotal
+
+allocate(resnuma(ntotal),stat=ierr)
+allocate(restypea(ntotal),stat=ierr)
+
+do i=1,ntotal
+
+       
+           read(86,'(i5,2a5,i5,3f8.3,3f8.4)',end=9000,err=9000) resnuma(k), restypea(k), atomtype, atomnum, coord_x, &
+                                             coord_y, coord_z, vel_x , vel_y , vel_z
+
+
+
+
+           if(restypea(k) == 'SOL  ') then
+
+                                  exit
+
+           endif
+
+           k = k + 1
+
+enddo
+
+natoms = k-1
+
+close(unit=86)
+
+
+write(*,*) natoms
+
+
+open(unit=86,file='md_final.gro')
+open(unit=87,file='minimized3.gro')
+open(unit=88,file='s11')
+
+
+ read(86,*,end=9000,err=9000)
+ read(86,*,end=9000,err=9000) Ntotal
+
+ write(87,*)
+ write(87,*) NATOMS
+ 
+ do i=1,NATOMS
+       
+           read(86,'(i5,2a5,i5,3f8.3,3f8.4)',end=9000,err=9000) resnum, restype, atomtype, atomnum, coord_x, &
+                                             coord_y, coord_z, vel_x , vel_y , vel_z
+          write(87,'(i5,2a5,i5,3f8.3,3f8.4)') resnum, restype, atomtype, atomnum, coord_x, &
+                                             coord_y, coord_z, vel_x , vel_y , vel_z
+ enddo
+
+
+ do i=1,ntotal-natoms
+
+           read(86,'(i5,2a5,i5,3f8.3,3f8.4)',end=9000,err=9000) resnum, restype, atomtype, atomnum, coord_x, &
+                                             coord_y, coord_z, vel_x , vel_y , vel_z
+
+         write(88,'(i5,2a5,i5,3f8.3,3f8.4)') resnum, restype, atomtype, atomnum, coord_x, &
+                                             coord_y, coord_z, vel_x , vel_y , vel_z   
+       
+ enddo
+
+ read(86,*)  box_x,box_y,box_z
+
+ write(87,*) box_x,box_y,box_z
+
+ write(88,*) box_x,box_y,box_z
+
+9000 continue
+
+
+ close(unit=87)
+ close(unit=86)
+ close(unit=88)
+
+ call system('/loctmp/pee18323/GRO_bin/bin/grompp -f minim.mdp -p LOV2.top -c minimized3.gro -o input.tpr')
+ call system('/loctmp/pee18323/GRO_bin/bin/mdrun -v -s input.tpr -nice 0 -c minimized3.gro')
+ call system('rm -f ./#*# out')
+
+ call system('cp minimized3.gro start.gro')
+
+deallocate(resnuma)
+deallocate(restypea)
+
+end subroutine SOLVENT_CONFIG_SEPARATOR
+!end program test
